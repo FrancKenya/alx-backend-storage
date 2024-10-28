@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """ Exercise: Caching function """
 
+from functools import wraps
 import redis
 from uuid import uuid4
-from typing import Union, Callable, Optional
-from functools import wraps
+from typing import Callable, Optional, Union
 
 
 def count_calls(method: Callable) -> Callable:
@@ -39,7 +39,7 @@ class Cache:
 
     @call_history
     @count_calls
-    def store(self, data: Union[str, bytes, int, float]) -> str:
+    def store(self, data: Union[int, str, bytes, float]) -> str:
         """Store the input data in Redis using a random key"""
         key = str(uuid4())
         self._redis.set(key, data)
