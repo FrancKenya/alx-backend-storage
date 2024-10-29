@@ -10,10 +10,10 @@ count = 0
 def get_page(url: str) -> str:
     """Returns the content of a web page"""
     i = redis.Redis()
-    response = requests.get(url)
+    resp = requests.get(url)
     i.incr(f'count:{url}')
     i.setex(f'cached:{url}', 10, i.get(f"cached:{url}"))
-    return response.text
+    return resp.text
 
 
 if __name__ == '__main__':
