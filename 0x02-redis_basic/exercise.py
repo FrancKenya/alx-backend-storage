@@ -25,8 +25,8 @@ def call_history(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(self, *args, **kwargs):
         """Wrapper function"""
-        input_key = f"{method.__qualname__}:inputs"
-        output_key = f"{method.__qualname__}:outputs"
+        input_key = method.__qualname__ + ":inputs"
+        output_key = method.__qualname__ + ":outputs"
 
         # Store inputs as string representation
         self._redis.rpush(input_key, str(args))
@@ -39,8 +39,9 @@ def call_history(method: Callable) -> Callable:
     return wrapper
 
 
-class Cache:
-    def __init__(self, _redis: redis.Redis = None):
+class Cache():
+    """The Cache class"""
+    def __init__(self) -> None:
         """Initialize the client and flush the database"""
         self._redis = redis.Redis()
         self._redis.flushdb()
@@ -53,21 +54,26 @@ class Cache:
         self._redis.set(key, data)
         return key
 
-    def get(self, key: str, fn: Callable = None) -> Union[str, bytes,
-                                                          int, float, None]:
+    def get(self, key: str,
+            fn: Optional[Callable] = None) -> Union[int, bytes, float, int]:
         """A method that takes a key and an optional callable as input"""
         data = self._redis.get(key)
         if data is None:
             return None  # Preserve original Redis.get behavior
         return fn(data) if fn else data
 
-    def get_str(self, key: str) -> Union[str, None]:
+    def get_str(self, key: str) -> str:
         """Get a string from the redis cache"""
-        return self.get(key, fn=lambda data: data.decode('utf-8'))
+        return self.get(key).decode()
 
-    def get_int(self, key: str) -> Union[int, None]:
+    def get_int(self, key: str) -> int:
         """Get an integer from the redis cache"""
-        return self.get(key, fn=int)
+        result = self.get(key).decode()
+        try:
+            value = int(result)
+        except ValueError:
+            value = 0
+        return value
 
 
 def replay(method: Callable) -> None:
@@ -78,12 +84,14 @@ def replay(method: Callable) -> None:
     redis_instance = method.__self__._redis
 
     # Retrieve call count and input/output history
-    call_count = int(redis_instance.get(method_name).decode("utf-8") or 0)
-    input_history = redis_instance.lrange(f"{method_name}:inputs", 0, -1)
-    output_history = redis_instance.lrange(f"{method_name}:outputs", 0, -1)
+    input_history = redis_instance.lrange(
+        "{}:inputs".format(method_name), 0, -1)
+    output_history = redis_instance.lrange(
+        "{}:outputs".format(method_name), 0, -1)
 
     # Display the replay information
-    print(f"{method_name} was called {call_count} times:")
-    for inputs, output in zip(input_history, output_history):
-        print(f"{method_name}(*{inputs.decode(
-            'utf-8')}) -> {output.decode('utf-8')}")
+    print("{} was called {} times:".format(
+        method_name, method.__self__.get_int(method_name)))
+    for key, value in zip(input_history, output_history):
+        print("{}(*{}) -> {}".format(
+            method_name, key.decode(), value.decode()))
