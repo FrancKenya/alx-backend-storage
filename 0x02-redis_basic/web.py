@@ -9,12 +9,12 @@ count = 0
 
 def get_page(url: str) -> str:
     """Returns the content of a web page"""
-    i = redis.Redis()
+    r = redis.Redis()
     resp = requests.get(url)
-    i.incr(f'count:{url}')
-    i.setex(f'cached:{url}', 10, i.get(f"cached:{url}"))
+    r.incr(f"count:{url}")
+    r.setex(f"cached:{url}", 10, r.get(f"cached:{url}"))
     return resp.text
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     get_page('http://slowwly.robertomurray.co.uk')
